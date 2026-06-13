@@ -1,0 +1,61 @@
+`timescale 1ns/1ps
+
+module dptb;
+
+reg Clk, Rst;
+wire [31:0] DataOut;
+
+DataPath uut (.Clk(Clk),.Rst(Rst),.DataOut(DataOut));
+
+initial begin
+Clk = 1;
+Rst = 1; 
+end
+
+always #5 Clk = ~Clk;
+
+task reset_PC;
+begin
+    @(negedge Clk) begin
+        Rst = 1;
+        end
+    repeat (2) @(negedge Clk);
+end
+endtask
+
+task write_program;
+reg [31:0] prog [0:63];
+integer i;
+begin
+    $readmemh("program.mem",prog);
+    for (i = 0; i < 64; i = i + 1) begin
+        uut.IM.RAM0.mem[i] = prog[i][7:0];
+        uut.IM.RAM1.mem[i] = prog[i][15:8];
+        uut.IM.RAM2.mem[i] = prog[i][23:16];
+        uut.IM.RAM3.mem[i] = prog[i][31:24];
+    end
+end
+endtask
+
+task drop_reset_PC;
+begin
+    @(negedge Clk) begin
+        Rst = 0;
+        end
+end
+endtask 
+
+integer k;
+
+initial begin
+    write_program();   // LIGHTS!
+    reset_PC();        // CAMERA!!
+    drop_reset_PC();   // ACTION!!!
+    #100;
+    
+    for (k=0;k<32;k=k+1) begin
+        $display("x%0d   %h",k,uut.RB.mem[k]);
+        end
+    $finish;
+    end
+endmodule
