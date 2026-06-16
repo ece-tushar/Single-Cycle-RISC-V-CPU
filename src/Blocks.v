@@ -1,7 +1,64 @@
+module SignExtender # (
+    parameter DATA_WIDTH = 32,
+    parameter BYTE = 2'b00,
+    parameter HALF_WORD = 2'b01,
+    parameter WORD = 2'b10
+    )( input [DATA_WIDTH-1:0] DataIn,
+       input [1:0] DataType,
+       input SignExtd,
+       output reg [DATA_WIDTH-1:0] DataOut
+       );
+     
+     always @ (*) begin
+        DataOut = 0;
+        case (DataType)
+            BYTE      : DataOut = SignExtd ? {{(DATA_WIDTH-8){DataIn[7]}},{DataIn[7:0]}}:
+                                             {{(DATA_WIDTH-8){1'b0}},{DataIn[7:0]}};
+            HALF_WORD : DataOut = SignExtd ? {{(DATA_WIDTH-16){DataIn[15]}}, DataIn[15:0]} :
+                                             {{(DATA_WIDTH-16){1'b0}}, DataIn[15:0]};
+            WORD      : DataOut = DataIn;
+        endcase    
+     end
+
+endmodule
+
+
+module ImmGen #(
+    parameter DATA_WIDTH = 32,
+    
+    parameter [6:0]
+             Rtype      = 7'b0110011,
+             R_Itype    = 7'b0010011,
+             Load_Itype = 7'b0000011,
+             Stype      = 7'b0100011,
+             Btype      = 7'b1100011,
+             LUI        = 7'b0110111,
+             AUIPC      = 7'b0010111,
+             JAL_Jtype  = 7'b1101111,
+             JALR_Itype = 7'b1100111,
+             Envi_Itype = 7'b1110011
+    )(
+    input [11:0] ImmIn,
+    input [6:0] ImmInstrType,
+    output reg [DATA_WIDTH-1:0] ImmOut
+    );
+    
+    always @ (*) begin
+        ImmOut = 0;
+        case (ImmInstrType)
+            R_Itype : ImmOut = {{20{ImmIn[11]}},ImmIn};
+        endcase
+        end
+endmodule
+
+
 module Controller(
 //input structure : funct7[16:10]|funct3[9:7]|opcode[6:0]
     input [16:0] ControlKey,
-    output reg SelAdderPC, SelDataInPC, RegBankWEn,
+    output reg SelAdderPC, SelDataInPC, RegBankWEn, 
+               SelMuxALU, SignExtd, SelRegBankDataIn,
+    output reg [1:0] DataMemRDataType,
+    output reg [6:0] ImmInstrType,
     output reg [3:0] ALUSelFunc
     );
     // ALU Parameters
@@ -11,6 +68,11 @@ module Controller(
     parameter S_LT = 4'b1000, U_LT = 4'b1001;   // Signed/Unsigned Less than
     parameter B_EQ = 4'b1010, B_NEQ = 4'b1011,  B_GEQ = 4'b1100; // Boolean == | != | >= 
  
+    //Data Length parameters
+    parameter BYTE = 2'b00;
+    parameter HALF_WORD = 2'b01;
+    parameter WORD = 2'b10;
+
     // OPCODE parameters
     parameter [6:0]
              Rtype      = 7'b0110011,
@@ -23,19 +85,23 @@ module Controller(
              JAL_Jtype  = 7'b1101111,
              JALR_Itype = 7'b1100111,
              Envi_Itype = 7'b1110011;
-    //funct7 parameters R type        
-    parameter [6:0]
-             SUB_SRA = 7'b0100000,
-             ZERO = 7'b0;
+            
+    parameter [6:0]                     
+             SUB_SRA = 7'b0100000,    //funct7 parameters R type    
              
-    // funct 3 code below R-type
+             R_I_SRL = 7'b0000000,  // funct7 parameters for R_I type
+             R_I_SRA = 7'b0100000,
+             
+             ZERO = 7'b0;               
+             
+    // funct 3 code below R-type and R_I type   //These are for Load_Itype
     parameter [2:0] 
-             F3_ADD_SUB = 3'b000,
-             F3_XOR     = 3'b100, // logical
-             F3_OR      = 3'b110,
-             F3_AND     = 3'b111,
-             F3_SLL     = 3'b001, // shifts
-             F3_SRL_SRA = 3'b101,
+             F3_ADD_SUB = 3'b000,               F3_LB  = 3'b000,               
+             F3_XOR     = 3'b100, /*logical*/   F3_LH  = 3'b001,
+             F3_OR      = 3'b110,               F3_LW  = 3'b010,
+             F3_AND     = 3'b111,               F3_LBU = 3'b100,
+             F3_SLL     = 3'b001, /*shifts*/    F3_LHU = 3'b101,
+             F3_SRL_SRA = 3'b101, 
              F3_SLT     = 3'b010, // comparison
              F3_SLTU    = 3'b011;
               
@@ -49,7 +115,12 @@ module Controller(
         SelAdderPC  = 1'b0;
         SelDataInPC = 1'b0;
         RegBankWEn  = 1'b0;
+        SelMuxALU   = 1'b0;
+        SignExtd    = 1'b0;
+        SelRegBankDataIn = 1'b0;
+        DataMemRDataType = 2'b0;
         ALUSelFunc  = 4'b0000;
+        ImmInstrType = 7'b0;
         case (opcode)
            Rtype : begin RegBankWEn = 1'b1;
                     case(funct7)
@@ -72,6 +143,35 @@ module Controller(
                           default : ALUSelFunc = 4'b1111; // illegal funct7
                     endcase 
                     end
+
+           R_Itype : begin RegBankWEn = 1'b1; SelMuxALU = 1'b1; ImmInstrType = R_Itype;
+                    case(funct3)
+                       F3_ADD_SUB : ALUSelFunc = ADD; 
+                       F3_XOR     : ALUSelFunc = XOR;
+                       F3_OR      : ALUSelFunc = OR;
+                       F3_AND     : ALUSelFunc = AND;
+                       F3_SLL     : ALUSelFunc = SLL;
+                       F3_SRL_SRA : case (funct7)
+                                        R_I_SRL : ALUSelFunc = SRL;
+                                        R_I_SRA : ALUSelFunc = SRA;
+                                        default : ALUSelFunc = 4'b1111;
+                                    endcase    
+                       F3_SLT     : ALUSelFunc = S_LT;
+                       F3_SLTU    : ALUSelFunc = U_LT;
+                       default    : ALUSelFunc = 4'b1111;
+                     endcase
+                     end
+        Load_Itype : begin RegBankWEn = 1'b1; SelMuxALU = 1'b1; 
+                     ImmInstrType = R_Itype; SelRegBankDataIn=1'b1;
+                     ALUSelFunc = ADD;
+                    case(funct3)
+                           F3_LB  :begin SignExtd = 1'b1 ; DataMemRDataType = BYTE; end
+                           F3_LH  :begin SignExtd = 1'b1 ; DataMemRDataType = HALF_WORD; end
+                           F3_LW  :begin SignExtd = 1'b1 ; DataMemRDataType = WORD; end
+                           F3_LBU :begin SignExtd = 1'b0 ; DataMemRDataType = BYTE; end
+                           F3_LHU :begin SignExtd = 1'b0 ; DataMemRDataType = HALF_WORD; end
+                     endcase
+                    end
        endcase
     end
                                     
@@ -91,7 +191,7 @@ module InstrDecoder #(
       JAL_Jtype   = 7'b1101111,
       JALR_Itype  = 7'b1100111,
       Envi_Itype  = 7'b1110011, 
-    // funct 3 code below R-type
+    // funct 3 code below R-type+R_Itype
     parameter [2:0] 
             ADD_SUB = 3'b000,
             XOR     = 3'b100, // logical
@@ -101,12 +201,12 @@ module InstrDecoder #(
             SRL_SRA = 3'b101,
             SLT     = 3'b010, // comparison
             SLTU    = 3'b011,
-     // funct 7 codes below R-type
+     // funct 7 codes below R-type 
      parameter [6:0]
             SUB_SRA = 7'b0100000,
             ZERO = 7'b0
     )(input [FUNC_WIDTH-1:0] InstrCodes,
-      // funct7[16:10]|funct3[9:7]|opcode[6:0]
+      // funct7[16:10|7]|funct3[9:7|3]|opcode[6:0|7]
       
       output reg [FUNC_WIDTH-1:0] ControlKey
       );
@@ -114,7 +214,9 @@ module InstrDecoder #(
     always @ (*) begin
         ControlKey = 17'b0;
         case(InstrCodes[6:0])
-            Rtype : ControlKey = InstrCodes;
+            Rtype       : ControlKey = InstrCodes;
+            R_Itype     : ControlKey = InstrCodes;
+            Load_Itype  : ControlKey = {7'b0,InstrCodes[9:0]};
         endcase
     end    
 endmodule    
@@ -187,9 +289,9 @@ module RegBank32 #(
             end
     end
     
-    initial begin
-        $readmemh("regdata.mem",mem);
-        end
+//    initial begin
+//        $readmemh("regdata.mem",mem);
+//        end
     
     assign DataOut1 = mem[RAddr1];
     assign DataOut2 = mem[RAddr2];
@@ -198,7 +300,7 @@ endmodule
             
 
 module PCBlock#(
-    parameter DATA_WIDTH = 8
+   parameter DATA_WIDTH = 8
     )(
     input SelAdderPC,SelDataInPC,
     input Clk,Rst,
@@ -254,7 +356,7 @@ module ByteAdrRAM #(
     // 7  6  5  4  3  2  1  0
     
     // WHAT HAPPENS IF HALF_WORD AND WORD DEMAND END ADDRESS? i.e. 
-    // if WORD type access is requested as RAddr - 8'hFF 
+    // WHAT DO TO IF WORD TYPE DEMANDS CONTENTS AT ADDR 1111_1111? 
     // - As of now I leave this responsibility to the programmer.
     
     // Haven't included sign-extension in the memory itself.
