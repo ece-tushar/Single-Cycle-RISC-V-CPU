@@ -153,7 +153,7 @@ Address width is set by a single parameter (`PC_DATA_WIDTH`) at the top level ,e
 single-cycle-rv32i-cpu/
 ├── src/      # Verilog source files
 ├── sim/      # Testbench, instruction .mem files, and expected output (target.mem)
-└── images/   # Architecture diagrams and waveform screenshots
+└── images/   # Architecture diagrams and log file screenshots
 ```
 ---
 # Conclusion
