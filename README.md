@@ -13,7 +13,8 @@ It took 17 days from learning RISC-V to complete processor implementation.
 ---
 # Processor Architecture 
 
-![[RISC_V_archi]]
+![Datapath](images/final_image_RISC_V_archi.png)
+
 
 
 ## Supported Instructions
@@ -116,15 +117,16 @@ Key parameters (`DATA_WIDTH`, `PC_DATA_WIDTH`, data type encodings) are defined 
 
 ### Test programs written and verified:
 
-**Fibonacci**
-This was the first integration test, for non branch type instructions. 
-![[Pasted image 20260618022249.png]]
-![[Pasted image 20260618022242.png]]
+**Fibonacci**  
+This was the first integration test, for non branch type instructions.   
+![Fibo1](images/fibo1.png)  
+![Fibo2](images/fibo2.png)
 
-**GCD**
-This program is a comprehensive test of the entire datapath exercising loops and arithmetic instructions.  
-![[Pasted image 20260618023014.png]]
-![[Pasted image 20260618023028.png]]
+
+**GCD**  
+This program is a comprehensive test of the entire datapath exercising loops and arithmetic instructions.    
+![GCD1](images/Gcd1.png)  
+![GCD2](images/Gcd2.png)
 
 ---
 ## Notable Engineering Decisions
