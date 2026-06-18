@@ -141,7 +141,21 @@ This program is a comprehensive test of the entire datapath exercising loops and
 |Self-checking testbench|Repeatable regression testing|
 
 ---
+### Scalability Notes
 
+The 8-bit address space is a simulation constraint, not an architectural limitation.  
+Address width is set by a single parameter (`PC_DATA_WIDTH`) at the top level ,extending to 32-bit addressing only requires widening the memory interface. The datapath and control logic need no changes.
+
+---
+## Repository Structure
+
+```
+single-cycle-rv32i-cpu/
+├── src/      # Verilog source files
+├── sim/      # Testbench, instruction .mem files, and expected output (target.mem)
+└── images/   # Architecture diagrams and waveform screenshots
+```
+---
 # Conclusion
 
 A fully verified single-cycle RV32I processor, built from first principles in 17 days. Every instruction type in the base ISA is implemented and verified against known-good outputs.
