@@ -1,0 +1,17 @@
+lw x1, 0(x0)       # BA0:  x1 = a = 12
+lw x2, 4(x0)       # BA4:  x2 = b = 8
+
+# Loop (BA8)
+beq x1, x2, +24    # BA8:  if a==b, jump to done (BA32)
+blt x1, x2, +12    # BA12: if a<b, jump to sub_b (BA24)
+
+# sub_a: a = a - b
+sub x1, x1, x2     # BA16
+beq x0, x0, -12    # BA20: jump to loop (BA8)
+
+# sub_b: b = b - a
+sub x2, x2, x1     # BA24
+beq x0, x0, -20    # BA28: jump to loop (BA8)
+
+# done (BA32)
+sw x1, 8(x0)       # BA32: WA2 = GCD = 4
