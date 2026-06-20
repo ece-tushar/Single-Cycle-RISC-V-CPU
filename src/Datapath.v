@@ -125,7 +125,7 @@ module DataPath #(
                   .DataOut(ALU_DataOut));
       
                  
-    mux4to1 #(.DATA_WIDTH(32))         // write back n/w
+    mux4to1 #(.DATA_WIDTH(32))         /*write back n/w*/
             MUX_RB (.DataIn0(ALU_DataOut),
                      .DataIn1(SE_DataOut),
                      .DataIn2({{(DATA_WIDTH-PC_DATA_WIDTH){1'b0}}, PC_PCnext}),
