@@ -125,7 +125,7 @@ module DataPath #(
                   .DataOut(ALU_DataOut));
       
                  
-    mux4to1 #(.DATA_WIDTH(32)) 
+    mux4to1 #(.DATA_WIDTH(32))         // write back n/w
             MUX_RB (.DataIn0(ALU_DataOut),
                      .DataIn1(SE_DataOut),
                      .DataIn2({{(DATA_WIDTH-PC_DATA_WIDTH){1'b0}}, PC_PCnext}),
@@ -135,7 +135,7 @@ module DataPath #(
                 
      RegBank32 RB (.DataIn(MUX_RB_DataOut),
                    .Clk(Clk),
-                   .Rst(Rst), // i will preload data using .mem file so don't need this
+                   .Rst(Rst), 
                    .WEn(CTRL_RegBankWEn),
                    .RAddr1(IM_Instr[19:15]),
                    .RAddr2(IM_Instr[24:20]),
