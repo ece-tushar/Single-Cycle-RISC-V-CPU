@@ -92,6 +92,11 @@ RV32I Processor (datapath.v)
 └── Writeback Network
     └── 4-to-1 Result MUX
 ```
+---
+### Notable issues and fixes
+
+`WDataRouter` — Bypassed WEn and Address Bug  
+Initially, WEn and WAddr bypassed the WDataRouter and were connected directly to the byte cells. This caused two problems on unaligned accesses: spillover bytes wrote to the wrong word lane, and `BYTE/HALF_WORD` stores enabled all four byte cells, corrupting adjacent data with zero-padding. The fix routes both `WEn` (as `CellWEn`) and the per-cell addresses through the router, which generates the correct one-hot/two-hot enable mask and incremented addresses from `WAddr[1:0]`.
 
 ---
 ## Verification Strategy
